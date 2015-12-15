@@ -2,4 +2,4 @@
 
 open TypeProviderSandbox
 
-let x = Provider1<"FooBar">.FooBar<"year">().Value 
+let x = Provider1<"FooBar">.FooBar<"now">().Value 
