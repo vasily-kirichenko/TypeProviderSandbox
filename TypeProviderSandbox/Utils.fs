@@ -5,16 +5,32 @@ open System.Runtime.Caching
 open System
 open ProviderImplementation.ProvidedTypes
 open System.Reflection
+open System.Collections.Generic
  
 type MemoryCache with  
     member x.GetOrAdd key (value: Lazy<_>) = 
         let policy = CacheItemPolicy()
         policy.SlidingExpiration <- TimeSpan.FromHours 24.
         match x.AddOrGetExisting(key, value, policy) with
-        | :? Lazy<ProvidedTypeDefinition> as item -> item.Value 
+        | :? Lazy<'a> as item -> item.Value 
         | x -> 
             assert(x = null)
             value.Value
+
+type MethodCaches() =
+    let caches = Dictionary<string, MemoryCache>()
+    member __.GetOrAdd name =
+        match caches.TryGetValue name with
+        | true, x -> x
+        | _ ->
+            let cache = new MemoryCache(name)
+            caches.[name] <- cache
+            cache
+    interface IDisposable with
+        member __.Dispose() = 
+            caches.Values |> Seq.iter (fun x -> x.Dispose())
+            caches.Clear()
+
 
 let private makeMethod<'a> isStatic name parameters = 
     ProvidedMethod(name, parameters, typeof<'a>, IsStaticMethod = isStatic)
